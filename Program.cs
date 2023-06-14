@@ -6,6 +6,13 @@ using System.Windows.Media.Imaging;
 
 namespace A25;
 
+class Point2D {
+   public readonly int X;
+   public readonly int Y;
+   public Point2D (double x, double y) => (X, Y) = ((int)x, (int)y);
+   public static double Distance (Point2D p1, Point2D p2) => Math.Sqrt (Math.Pow (p2.X - p1.X, 2) + Math.Pow (p2.Y - p1.Y, 2));
+}
+
 class MyWindow : Window {
    public MyWindow () {
       Width = 800; Height = 600;
@@ -24,8 +31,46 @@ class MyWindow : Window {
       mStride = mBmp.BackBufferStride;
       image.Source = mBmp;
       Content = image;
+      MouseMove += OnMouseMove;
+      MouseLeftButtonDown += OnMouseLeftButtonDown;
+      //DrawMandelbrot (-0.5, 0, 1);
+   }
+   void OnMouseLeftButtonDown (object sender, MouseButtonEventArgs e) {
+      var pos = e.GetPosition (this);
+      if (mStartPt == null)
+         mStartPt = new (pos.X, pos.Y);
+      else {
+         mEndPt = new (pos.X, pos.Y);
+         DrawLine (mStartPt, mEndPt);
+         mStartPt = null;
+      }
+   }
 
-      DrawMandelbrot (-0.5, 0, 1);
+   void DrawLine (Point2D startPt, Point2D endPt) {
+      var pts = GetCLPoints (startPt, endPt);
+      foreach (var pt in pts) {
+         try {
+            mBmp.Lock ();
+            mBase = mBmp.BackBuffer;
+            SetPixel (pt.X, pt.Y, 255);
+            mBmp.AddDirtyRect (new Int32Rect (pt.X, pt.Y, 1, 1));
+         } finally {
+            mBmp.Unlock ();
+         }
+      }
+   }
+
+   /// <summary> Returns list of co-linear points lie between start point and end point </summary>
+   List<Point2D> GetCLPoints (Point2D startPt, Point2D endPt) {
+      List<Point2D> pts = new ();
+      var dist = Point2D.Distance (startPt, endPt);
+      var dx = (endPt.X - startPt.X) / dist;
+      var dy = (endPt.Y - startPt.Y) / dist;
+      for (int i = 1; i <= (int)dist; i++) {
+         var pt = new Point2D (startPt.X + dx * i, startPt.Y + dy * i);
+         pts.Add (pt);
+      }
+      return pts;
    }
 
    void DrawMandelbrot (double xc, double yc, double zoom) {
@@ -96,6 +141,8 @@ class MyWindow : Window {
    WriteableBitmap mBmp;
    int mStride;
    nint mBase;
+   Point2D? mStartPt; // start point of line
+   Point2D? mEndPt; // end point of line
 }
 
 internal class Program {
