@@ -9,7 +9,7 @@ using static System.Math;
 
 #region class GrayBitmap -------------------------------------------------------
 /// <summary>Implements a writeable grayscale bitmap</summary>
-class GrayBMP {
+public class GrayBMP {
    #region Constructor --------------------------------------
    /// <summary>Constructs a grayscale (8 bits-per-pixel) bitmap of given size</summary>
    public GrayBMP (double width, double height) {
@@ -104,6 +104,8 @@ class GrayBMP {
       }
       End ();
    }
+   /// <summary>Draws a line between the given start point and end point with the given shade of gray</summary>
+   public void DrawLine (Point2D p1, Point2D p2, int color) => Point2D.GetCLPoints (p1, p2).ForEach (p => SetPixel (p.X, p.Y, color));
 
    /// <summary>Call End after finishing the update of the bitmap</summary>
    public void End () {
@@ -111,7 +113,7 @@ class GrayBMP {
          if (mcLocks < 0) Fatal ("Unexpected call to GrayBitmap.End()");
          if (mX1 >= mX0 && mY1 >= mY0)
             mBmp.AddDirtyRect (new Int32Rect (mX0, mY0, mX1 - mX0 + 1, mY1 - mY0 + 1));
-         mBmp.Unlock (); 
+         mBmp.Unlock ();
       }
    }
 

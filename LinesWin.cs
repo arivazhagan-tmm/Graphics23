@@ -3,7 +3,8 @@
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Controls;
-using System.Windows.Threading;
+using System.Drawing;
+using System;
 
 namespace GrayBMP;
 
@@ -24,16 +25,9 @@ class LinesWin : Window {
       RenderOptions.SetEdgeMode (image, EdgeMode.Aliased);
       Content = image;
       mDX = mBmp.Width; mDY = mBmp.Height;
-
-      // Start a timer to repaint a new frame every 33 milliseconds
-      DispatcherTimer timer = new () {
-         Interval = TimeSpan.FromMilliseconds (100), IsEnabled = true,
-      };
-      timer.Tick += NextFrame;
    }
    readonly GrayBMP mBmp;
    readonly int mDX, mDY;
-
    void NextFrame (object sender, EventArgs e) {
       using (new BlockTimer ("Lines")) {
          mBmp.Begin ();
@@ -48,8 +42,12 @@ class LinesWin : Window {
       }
    }
    Random R = new ();
+   /// <summary> initiates polyfill algorithm for filling up given polygons</summary>
+   public void InitiatePolyFill (List<Polygon> polygons, List<Point2D> vertices) {
+      PolyFill pf = new (polygons, vertices);
+      pf.Fill (mBmp, 255);
+   }
 }
-
 class BlockTimer : IDisposable {
    public BlockTimer (string message) {
       mStart = DateTime.Now;
