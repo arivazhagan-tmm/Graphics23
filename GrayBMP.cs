@@ -76,7 +76,7 @@ class GrayBMP {
    /// <summary>
    /// Tags the entire bitmap as dirty
    /// </summary>
-   public void Dirty () 
+   public void Dirty ()
       => Dirty (0, 0, Width - 1, Height - 1);
 
    /// <summary>Draws a line between the given endpoints, with the given shade of gray</summary>
@@ -126,13 +126,28 @@ class GrayBMP {
       End ();
    }
 
+   /// <summary> Draws a line with given pixel thickness</summary>
+   public void DrawThickLine (int x0, int y0, int x1, int y1, int width, int color) {
+      Point2D startPt = new (x0, y0),
+              endPt = new (x1, y1);
+      double offset = width * 0.5;
+      for (int i = 1; i <= offset; i++) {
+         var vertices = Point2D.GetPolygonVertices (startPt, endPt, i);
+         for (int j = 0; j < vertices.Length - 1; j++) {
+            Point2D vertex1 = vertices[j],
+                    vertex2 = vertices[j + 1];
+            DrawLine ((int)vertex1.X, (int)vertex1.Y, (int)vertex2.X, (int)vertex2.Y, color);
+         }
+      }
+   }
+
    /// <summary>Call End after finishing the update of the bitmap</summary>
    public void End () {
       if (--mcLocks == 0) {
          if (mcLocks < 0) Fatal ("Unexpected call to GrayBitmap.End()");
          if (mX1 >= mX0 && mY1 >= mY0)
             mBmp.AddDirtyRect (new Int32Rect (mX0, mY0, mX1 - mX0 + 1, mY1 - mY0 + 1));
-         mBmp.Unlock (); 
+         mBmp.Unlock ();
       }
    }
 
@@ -168,4 +183,33 @@ class GrayBMP {
    int mcLocks;               // Number of unmatched Begin() calls
    #endregion
 }
+#endregion
+
+#region Struct Point2D
+
+record struct Point2D (double X, double Y) {
+   /// <summary>Determines the angle between two points</summary>
+   public static double Angle (Point2D p1, Point2D p2) => Round (Atan2 (p2.Y - p1.Y, p2.X - p1.X) * (180 / PI), 2);
+   /// <summary> Returns the projected point at given distance at given angle</summary>
+   public static Point2D Project (Point2D p, double distance, double angle) {
+      angle *= (PI / 180);
+      return new (p.X - (distance * Cos (angle)), p.Y + (distance * Sin (angle)));
+   }
+   /// <summary> Returns vertices of polygon which encloses the given two points</summary>
+   public static Point2D[] GetPolygonVertices (Point2D startPt, Point2D endPt, double offset) {
+      double angle = Angle (startPt, endPt),
+             offsetAngle = 90 - angle,
+             capAngle = 360 - angle;
+      Point2D p1 = Project (startPt, offset, offsetAngle),
+              p2 = Project (startPt, -offset, offsetAngle),
+              p3 = Project (endPt, offset, offsetAngle),
+              p4 = Project (endPt, -offset, offsetAngle),
+              p5 = Project (p1, offset, capAngle - 30),
+              p6 = Project (p2, offset, capAngle + 30),
+              p7 = Project (p3, offset, capAngle - 150),
+              p8 = Project (p4, offset, capAngle + 150);
+      return new Point2D[] { p1, p5, p6, p2, p4, p8, p7, p3, p1 };
+   }
+}
+
 #endregion
