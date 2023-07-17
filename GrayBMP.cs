@@ -127,18 +127,16 @@ class GrayBMP {
    }
 
    /// <summary> Draws a line with given pixel thickness</summary>
-   public void DrawThickLine (int x0, int y0, int x1, int y1, int width, int color) {
-      Point2D startPt = new (x0, y0),
-              endPt = new (x1, y1);
+   public void DrawThickLine (int x0, int y0, int x1, int y1, int width, int color, PolyFillFast mPF) {
+      var (startPt, endPt) = (new Point2(x0, y0),new Point2(x1, y1));
       double offset = width * 0.5;
-      for (int i = 1; i <= offset; i++) {
-         var vertices = Point2D.GetPolygonVertices (startPt, endPt, i);
-         for (int j = 0; j < vertices.Length - 1; j++) {
-            Point2D vertex1 = vertices[j],
-                    vertex2 = vertices[j + 1];
-            DrawLine ((int)vertex1.X, (int)vertex1.Y, (int)vertex2.X, (int)vertex2.Y, color);
-         }
+      var vertices = Point2.GetPolygonVertices (startPt, endPt, offset);
+      mPF.Reset ();
+      for (int i = 0; i < vertices.Length - 1; i++) {
+         var ((X0, Y0),(X1, Y1)) = (vertices[i].Round (), vertices[i + 1].Round ());
+         mPF.AddLine (X0, Y0, X1, Y1);
       }
+      mPF.Fill (this, color);
    }
 
    /// <summary>Call End after finishing the update of the bitmap</summary>
@@ -183,27 +181,4 @@ class GrayBMP {
    int mcLocks;               // Number of unmatched Begin() calls
    #endregion
 }
-#endregion
-
-#region Struct Point2D
-
-record struct Point2D (double X, double Y) {
-   /// <summary> Returns the projected point at given distance at given angle</summary>
-   public static Point2D Project (Point2D p, double d, double theta) => new (p.X + (d * Cos (theta)), p.Y + (d * Sin (theta)));
-   /// <summary> Returns vertices of polygon which encloses the given two points</summary>
-   public static Point2D[] GetPolygonVertices (Point2D startPt, Point2D endPt, double offset) {
-      double angle = Atan2 (endPt.Y - startPt.Y, endPt.X - startPt.X);
-      var pts = new Point2D[8];
-      int count = 0;
-      double startAngle = PI / 2,
-             endAngle = 3 * PI / 2,
-             increment = PI / 3;
-      for (double i = startAngle; i <= endAngle; i += increment) {
-         pts[count++] = Project (startPt, offset, angle + i);
-         pts[count++] = Project (endPt, -offset, angle + i);
-      }
-      return new Point2D[] { pts[0], pts[2], pts[4], pts[6], pts[1], pts[3], pts[5], pts[7], pts[0] };
-   }
-}
-
 #endregion
