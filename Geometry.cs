@@ -22,9 +22,66 @@ readonly record struct Point2 (double X, double Y) {
 
    public double AngleTo (Point2 b) => Math.Atan2 (b.Y - Y, b.X - X);
    public Point2 RadialMove (double r, double th) => new (X + r * Cos (th), Y + r * Sin (th));
-
+   public double DistanceTo (Point2 p) => Sqrt (Pow (p.X - X, 2) + Pow (p.Y - Y, 2));
+   /// <summary> Checks the point is inside the polygon or not</summary>
+   public bool IsInside (Polygon poly) {
+      var pt = new Point2 (poly.Bound.X1 + 1, Y);
+      var hLine = new Edge (this, pt); // Horizontal line
+      var intersections = poly.Edges.Where (e => e.IsIntersect (hLine)).Count ();
+      return intersections % 2 != 0;
+   }
+   /// <summary> Returns the point located far away</summary>
+   public Point2 FarthestPoint (List<Point2> pts, out double distance) {
+      var count = pts.Count;
+      var dist = new double[count]; // Distances
+      for (int i = 0; i < count; i++)
+         dist[i] = DistanceTo (pts[i]);
+      distance = dist.Max ();
+      var index = dist.ToList ().IndexOf (distance);
+      return pts[index];
+   }
+   /// <summary> Returns centroid given points</summary>
+   public static Point2 Centroid (IEnumerable<Point2> pts) {
+      double x = 0, y = 0;
+      int count = pts.Count ();
+      pts.ToList ().ForEach (p => { x += p.X; y += p.Y; });
+      return new Point2 (x / count, y / count);
+   }
+   public static IEnumerable<Point2> ClockwiseSort (IEnumerable<Point2> pts) {
+      var list = pts.OrderBy (p => p.X).ThenBy (p => p.Y).ToList ();
+      list.Sort (new ComparePoint (list[0]));
+      return list;
+   }
+   /// <summary> Returns convex hull around the given polygon</summary>
+   public static Point2[] ConvexHull (Point2[] pts) {
+      var refPoint = pts[0];
+      var convHull = new List<Point2> { refPoint };
+      var poly = new Polygon (pts);
+      for (int i = 1, len = pts.Length; i < len; i++) {
+         var tmp = pts[i];
+         var angle = refPoint.AngleTo (tmp);
+         Point2 p = tmp.RadialMove (0.5, angle);
+         if (!p.IsInside (poly)) {
+            convHull.Add (tmp);
+            refPoint = tmp;
+         }
+      }
+      return convHull.ToArray ();
+   }
    public static Vector2 operator - (Point2 a, Point2 b) => new (a.X - b.X, a.Y - b.Y);
    public static Point2 operator + (Point2 p, Vector2 v) => new (p.X + v.X, p.Y + v.Y);
+}
+
+readonly record struct ComparePoint (Point2 refPt) : IComparer<Point2> {
+   public int Compare (Point2 p1, Point2 p2) {
+      double angle1 = refPt.AngleTo (p1) * (180 / PI),
+             angle2 = refPt.AngleTo (p2) * (180 / PI),
+             distance1 = refPt.DistanceTo (p1),
+             distance2 = refPt.DistanceTo (p2);
+      if (angle1.CompareTo (angle2) == -1) return 0;
+      if (angle1.CompareTo (angle2) == 0 && distance1.CompareTo (distance2) == -1) return 0;
+      return -1;
+   }
 }
 
 /// <summary>A Vector2 in 2D space</summary>
@@ -96,13 +153,42 @@ readonly struct Bound2 {
    public readonly double X0, Y0, X1, Y1;
 }
 
+readonly record struct Edge (Point2 startPt, Point2 endPt) {
+   public readonly Point2 StartPoint => startPt;
+   public readonly Point2 EndPoint => endPt;
+   public bool IsIntersect (Edge other) {
+      var isIntersect = false;
+      var yCord = other.StartPoint.Y;
+      bool condition1 = yCord < EndPoint.Y && yCord > StartPoint.Y,
+           condition2 = yCord < StartPoint.Y && yCord > EndPoint.Y;
+      if (condition1 || condition2) {
+         var factor = (yCord - startPt.Y) / (endPt.Y - startPt.Y);
+         var xIntersect = startPt.X + (endPt.X - startPt.X) * factor;
+         if (xIntersect > other.StartPoint.X)
+            isIntersect = true;
+      }
+      return isIntersect;
+   }
+   public override string ToString () => $"({StartPoint}, {EndPoint})";
+}
+
 /// <summary>A Polygon is a set of points making a closed shape</summary>
 class Polygon {
-   public Polygon (IEnumerable<Point2> pts) => mPts = pts.ToArray ();
-
+   public Polygon (IEnumerable<Point2> pts) {
+      mPts = pts.ToArray ();
+      mCentroid = Point2.Centroid (mPts);
+      int len = mPts.Length;
+      mEdges = new Edge[len];
+      mEdges[^1] = new Edge (mPts[^1], mPts[0]);
+      for (int i = 0; i < len - 1; i++)
+         mEdges[i] = new (mPts[i], mPts[i + 1]);
+   }
    public IReadOnlyList<Point2> Pts => mPts;
+   public IReadOnlyList<Edge> Edges => mEdges;
+   public Point2 Centroid => mCentroid;
    readonly Point2[] mPts;
-
+   readonly Edge[] mEdges;
+   readonly Point2 mCentroid;
    /// <summary>The bound of the polygon</summary>
    public Bound2 Bound {
       get {
@@ -130,11 +216,31 @@ class Polygon {
 class Drawing {
    public void Add (Polygon poly) {
       mPolys.Add (poly);
-      mBound = new (); 
+      mBound = new ();
+   }
+
+   /// <summary> Updates covnex hull around all outer polygons</summary>
+   public void UpdateConvexHull () {
+      if (mPolys.Count == 1) {
+         mConvexHull = Point2.ConvexHull (mPolys[0].Pts.ToArray ());
+         return;
+      }
+      var polyCentroids = mPolys.Select (p => p.Centroid).ToList ();
+      var commonCentroid = Point2.Centroid (polyCentroids);
+      commonCentroid.FarthestPoint (polyCentroids, out double distance);
+      // Taking 50% of farthest point's distance as limit to find outer polygons
+      var distLimit = distance * 0.5;
+      var outerPolys = mPolys.Where (p => p.Centroid.DistanceTo (commonCentroid) > distLimit).ToList ();
+      var outerPts = new Point2[outerPolys.Count];
+      for (int i = 0; i < outerPolys.Count; i++)
+         outerPts[i] = commonCentroid.FarthestPoint (outerPolys[i].Pts.ToList (), out distance);
+      outerPts = Point2.ClockwiseSort (outerPts).ToArray ();
+      mConvexHull = Point2.ConvexHull (outerPts);
    }
 
    public IReadOnlyList<Polygon> Polys => mPolys;
    List<Polygon> mPolys = new ();
+   Point2[] mConvexHull;
 
    public static Drawing operator * (Drawing d, Matrix2 m) {
       Drawing d2 = new Drawing ();
@@ -150,10 +256,16 @@ class Drawing {
    }
    Bound2 mBound;
 
-   public Bound2 GetBound (Matrix2 xfm) 
-      => new Bound2 (Polys.SelectMany (a => a.Pts.Select (p => p * xfm)));
-
+   public Bound2 GetBound (Matrix2 xfm) => new (mConvexHull.Select (p => p * xfm));
+   public IEnumerable<(Point2 A, Point2 B)> ConvexLines (Matrix2 xfm) {
+      Point2 p0 = mConvexHull[^1] * xfm;
+      for (int i = 0, n = mConvexHull.Length; i < n; i++) {
+         Point2 p1 = mConvexHull[i] * xfm;
+         yield return (p0, p1);
+         p0 = p1;
+      }
+   }
    /// <summary>Enumerate all the lines in this drawing</summary>
-   public IEnumerable<(Point2 A, Point2 B)> EnumLines (Matrix2 xfm) 
+   public IEnumerable<(Point2 A, Point2 B)> EnumLines (Matrix2 xfm)
       => mPolys.SelectMany (a => a.EnumLines (xfm));
 }

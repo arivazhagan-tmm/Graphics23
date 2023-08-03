@@ -10,11 +10,22 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Data\Convex Hull Algorithm.pdf" />
     <None Remove="Data\leaf-poly.txt" />
+    <None Remove="Data\polygon1.txt" />
+    <None Remove="Data\polygon2.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Data\Convex Hull Algorithm.pdf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Data\leaf-poly.txt" />
+    <EmbeddedResource Include="Data\polygon1.txt" />
+    <EmbeddedResource Include="Data\polygon2.txt" />
   </ItemGroup>
 
 </Project>
