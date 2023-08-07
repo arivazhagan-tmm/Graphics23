@@ -3,14 +3,17 @@ using System.Windows.Media;
 using System.Windows.Input;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
+using static System.Math;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace A25;
 
 class Point2D {
    public readonly int X;
    public readonly int Y;
-   public Point2D (double x, double y) => (X, Y) = ((int)x, (int)y);
-   public static double Distance (Point2D p1, Point2D p2) => Math.Sqrt (Math.Pow (p2.X - p1.X, 2) + Math.Pow (p2.Y - p1.Y, 2));
+   public Point2D (double x, double y) => (X, Y) = ((int)(x + 0.5), (int)(y + 0.5));
+   public static double Distance (Point2D p1, Point2D p2) => Sqrt (Pow (p2.X - p1.X, 2) + Pow (p2.Y - p1.Y, 2));
+   public override string ToString () => $"({X},{Y})";
 }
 
 class MyWindow : Window {
@@ -41,36 +44,42 @@ class MyWindow : Window {
          mStartPt = new (pos.X, pos.Y);
       else {
          mEndPt = new (pos.X, pos.Y);
-         DrawLine (mStartPt, mEndPt);
+         DrawLine (mStartPt, mEndPt, 255);
          mStartPt = null;
       }
    }
 
-   void DrawLine (Point2D startPt, Point2D endPt) {
-      var pts = GetCLPoints (startPt, endPt);
-      foreach (var pt in pts) {
-         try {
-            mBmp.Lock ();
-            mBase = mBmp.BackBuffer;
-            SetPixel (pt.X, pt.Y, 255);
-            mBmp.AddDirtyRect (new Int32Rect (pt.X, pt.Y, 1, 1));
-         } finally {
-            mBmp.Unlock ();
+   void DrawLine (Point2D startPt, Point2D endPt, byte color) {
+      (int x0, int y0, int x1, int y1) = (startPt.X, startPt.Y, endPt.X, endPt.Y);
+      int xMin = Min (x0, x1), yMin = Min (y0, y1), xMax = Max (x0, x1), yMax = Max (y0, y1);
+      bool steepLine = yMax - yMin > xMax - xMin;
+      if (steepLine)
+         (x0, y0, x1, y1) = (y0, x0, y1, x1);
+      if (x0 > x1)
+         (x0, y0, x1, y1) = (x1, y1, x0, y0);
+      int dx = x1 - x0, dy = y1 - y0, delY;
+      (dy, delY) = (dy < 0) ? (-dy, -1) : (dy, 1);
+      int x = x0, y = y0, error = (2 * dy) - dx;
+      try {
+         mBmp.Lock ();
+         mBase = mBmp.BackBuffer;
+         while (x <= x1) {
+            if (steepLine)
+               SetPixel (y, x, color);
+            else
+               SetPixel (x, y, color);
+            x++;
+            if (error < 0) {
+               error += 2 * dy;
+            } else {
+               y += delY;
+               error += 2 * (dy - dx);
+            }
          }
+         mBmp.AddDirtyRect (new Int32Rect (xMin, yMin, xMax - xMin + 1, yMax - yMin + 1));
+      } finally {
+         mBmp.Unlock ();
       }
-   }
-
-   /// <summary> Returns list of co-linear points lie between start point and end point </summary>
-   List<Point2D> GetCLPoints (Point2D startPt, Point2D endPt) {
-      List<Point2D> pts = new ();
-      var dist = Point2D.Distance (startPt, endPt);
-      var dx = (endPt.X - startPt.X) / dist;
-      var dy = (endPt.Y - startPt.Y) / dist;
-      for (int i = 1; i <= (int)dist; i++) {
-         var pt = new Point2D (startPt.X + dx * i, startPt.Y + dy * i);
-         pts.Add (pt);
-      }
-      return pts;
    }
 
    void DrawMandelbrot (double xc, double yc, double zoom) {
