@@ -7,10 +7,7 @@ using static System.Math;
 
 namespace A25;
 
-class Point2D {
-   public readonly int X;
-   public readonly int Y;
-   public Point2D (double x, double y) => (X, Y) = ((int)(x + 0.5), (int)(y + 0.5));
+readonly record struct Point2D (int X, int Y) {
    public override string ToString () => $"({X},{Y})";
 }
 
@@ -34,16 +31,17 @@ class MyWindow : Window {
       Content = image;
       MouseMove += OnMouseMove;
       MouseLeftButtonDown += OnMouseLeftButtonDown;
-      //DrawMandelbrot (-0.5, 0, 1);
    }
    void OnMouseLeftButtonDown (object sender, MouseButtonEventArgs e) {
       var pos = e.GetPosition (this);
-      if (mStartPt == null)
-         mStartPt = new (pos.X, pos.Y);
-      else {
-         mEndPt = new (pos.X, pos.Y);
+      var (X, Y) = ((int)(pos.X + 0.5), (int)(pos.Y + 0.5));
+      if (startPtClick) {
+         mStartPt = new (X, Y);
+         startPtClick = false;
+      } else {
+         mEndPt = new (X, Y);
          DrawLine (mStartPt, mEndPt, 255);
-         mStartPt = null;
+         startPtClick = true;
       }
    }
 
@@ -148,8 +146,9 @@ class MyWindow : Window {
    WriteableBitmap mBmp;
    int mStride;
    nint mBase;
-   Point2D? mStartPt; // start point of line
-   Point2D? mEndPt; // end point of line
+   bool startPtClick = true;
+   Point2D mStartPt; // start point of line
+   Point2D mEndPt; // end point of line
 }
 
 internal class Program {
