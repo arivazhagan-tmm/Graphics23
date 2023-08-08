@@ -4,7 +4,6 @@ using System.Windows.Input;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using static System.Math;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace A25;
 
@@ -12,7 +11,6 @@ class Point2D {
    public readonly int X;
    public readonly int Y;
    public Point2D (double x, double y) => (X, Y) = ((int)(x + 0.5), (int)(y + 0.5));
-   public static double Distance (Point2D p1, Point2D p2) => Sqrt (Pow (p2.X - p1.X, 2) + Pow (p2.Y - p1.Y, 2));
    public override string ToString () => $"({X},{Y})";
 }
 
@@ -50,7 +48,7 @@ class MyWindow : Window {
    }
 
    void DrawLine (Point2D startPt, Point2D endPt, byte color) {
-      (int x0, int y0, int x1, int y1) = (startPt.X, startPt.Y, endPt.X, endPt.Y);
+      var (x0, y0, x1, y1) = (startPt.X, startPt.Y, endPt.X, endPt.Y);
       int xMin = Min (x0, x1), yMin = Min (y0, y1), xMax = Max (x0, x1), yMax = Max (y0, y1);
       bool steepLine = yMax - yMin > xMax - xMin;
       if (steepLine)
