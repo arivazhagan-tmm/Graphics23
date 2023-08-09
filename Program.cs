@@ -39,8 +39,7 @@ class MyWindow : Window {
          mStartPt = new (X, Y);
          startPtClick = false;
       } else {
-         mEndPt = new (X, Y);
-         DrawLine (mStartPt, mEndPt, 255);
+         DrawLine (mStartPt, new (X, Y), 255);
          startPtClick = true;
       }
    }
@@ -148,7 +147,6 @@ class MyWindow : Window {
    nint mBase;
    bool startPtClick = true;
    Point2D mStartPt; // start point of line
-   Point2D mEndPt; // end point of line
 }
 
 internal class Program {
