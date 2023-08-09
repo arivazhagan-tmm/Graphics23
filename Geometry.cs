@@ -1,6 +1,7 @@
 // Geometry.cs - Contains some basic Geometry structs (Complex numbers, Points, Vectors)
 // ---------------------------------------------------------------------------------------
 using static System.Math;
+using static GrayBMP.Orientation;
 namespace GrayBMP;
 
 /// <summary>A number in the complex plane of the form (X + iY)</summary>
@@ -47,12 +48,7 @@ readonly record struct Point2 (double X, double Y) {
       pts.ToList ().ForEach (p => { x += p.X; y += p.Y; });
       return new Point2 (x / count, y / count);
    }
-   public static IEnumerable<Point2> ClockwiseSort (IEnumerable<Point2> pts) {
-      var list = pts.OrderBy (p => p.X).ThenBy (p => p.Y).ToList ();
-      list.Sort (new ComparePoint (list[0]));
-      return list;
-   }
-   /// <summary> Returns convex hull around the given polygon</summary>
+   /// <summary> Returns convex hull around the given points using intersection logic</summary>
    public static Point2[] ConvexHull (Point2[] pts) {
       var refPoint = pts[0];
       var convHull = new List<Point2> { refPoint };
@@ -68,20 +64,36 @@ readonly record struct Point2 (double X, double Y) {
       }
       return convHull.ToArray ();
    }
+   /// <summary> Returns convex hull around the given points using graham's scan</summary>
+   public static Point2[] ConvexHull (List<Point2> pts) {
+      Point2 refPoint = pts[0];
+      pts.Sort ((p1, p2) => {
+         return refPoint.Orientation (p1, p2) switch {
+            Colinear => 0,
+            Clockwise => 1,
+            _ => -1,
+         };
+      });
+      var convHull = new List<Point2> () { refPoint, pts[1] };
+      for (int i = 2, count = pts.Count; i < count;) {
+         while (convHull.Count >= 2 && convHull[^2].Orientation (convHull[^1], pts[i]) is Clockwise)
+            convHull.RemoveAt (convHull.Count - 1);
+         convHull.Add (pts[i++]);
+      }
+      return convHull.ToArray ();
+   }
+   /// <summary> Returns orientation of point comparing with given point1 and point2</summary>
+   public Orientation Orientation (Point2 p1, Point2 p2) {
+      Vector2 v1 = p1 - this, v2 = p2 - p1;
+      double value = v1.Y * v2.X - v1.X * v2.Y;
+      return value.CompareTo (0.0) switch {
+         0 => Colinear,
+         > 0 => Clockwise,
+         _ => CounterClockwise,
+      };
+   }
    public static Vector2 operator - (Point2 a, Point2 b) => new (a.X - b.X, a.Y - b.Y);
    public static Point2 operator + (Point2 p, Vector2 v) => new (p.X + v.X, p.Y + v.Y);
-}
-
-readonly record struct ComparePoint (Point2 refPt) : IComparer<Point2> {
-   public int Compare (Point2 p1, Point2 p2) {
-      double angle1 = refPt.AngleTo (p1) * (180 / PI),
-             angle2 = refPt.AngleTo (p2) * (180 / PI),
-             distance1 = refPt.DistanceTo (p1),
-             distance2 = refPt.DistanceTo (p2);
-      if (angle1.CompareTo (angle2) == -1) return 0;
-      if (angle1.CompareTo (angle2) == 0 && distance1.CompareTo (distance2) == -1) return 0;
-      return -1;
-   }
 }
 
 /// <summary>A Vector2 in 2D space</summary>
@@ -234,8 +246,7 @@ class Drawing {
       var outerPts = new Point2[outerPolys.Count];
       for (int i = 0; i < outerPolys.Count; i++)
          outerPts[i] = commonCentroid.FarthestPoint (outerPolys[i].Pts.ToList (), out distance);
-      outerPts = Point2.ClockwiseSort (outerPts).ToArray ();
-      mConvexHull = Point2.ConvexHull (outerPts);
+      mConvexHull = Point2.ConvexHull (outerPts.ToList ());
    }
 
    public IReadOnlyList<Polygon> Polys => mPolys;
@@ -269,3 +280,5 @@ class Drawing {
    public IEnumerable<(Point2 A, Point2 B)> EnumLines (Matrix2 xfm)
       => mPolys.SelectMany (a => a.EnumLines (xfm));
 }
+
+public enum Orientation { Colinear, Clockwise, CounterClockwise }

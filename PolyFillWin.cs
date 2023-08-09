@@ -47,8 +47,8 @@ class PolyFillWin : Window {
       mBmp.Begin ();
       mBmp.Clear (192);
       int thick = 2;
-      for (int x = 50; x < 850; x += 100, thick += 5) 
-         mBmp.DrawThickLine (new Point2(50, 550), new (x, 50), thick, 0);
+      for (int x = 50; x < 850; x += 100, thick += 5)
+         mBmp.DrawThickLine (new Point2 (50, 550), new (x, 50), thick, 0);
       mBmp.End ();
    }
 
@@ -65,8 +65,10 @@ class PolyFillWin : Window {
       foreach (var (a, b) in mDwg.EnumLines (xfm))
          mPF.AddLine (a, b);
       mPF.Fill (mBmp, 255);
-      foreach (var (a, b) in mDwg.ConvexLines (xfm))
+      foreach (var (a, b) in mDwg.ConvexLines (xfm)) {
          mBmp.DrawLine (a, b, 0);
+         mBmp.Highlight (a, 0); //Highlights each start point of the convex line
+      }
 
       mBmp.End ();
       mRotate++;

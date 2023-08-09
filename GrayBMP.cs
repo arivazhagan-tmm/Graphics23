@@ -113,6 +113,22 @@ class GrayBMP {
       DrawLine (x0, y0, x1, y1, gray);
    }
 
+   /// <summary>Highlights the point with asterisk symbol</summary>
+   public void Highlight (Point2 p, int color) {
+      var (x0, y0) = p.Round ();
+      for (int i = 0; i < 4; i++) {
+         var (x1, y1, x2, y2) = (x0 + i, y0 + i, x0 - i, y0 - i);
+         Check (x1, y1);
+         Check (x2, y2);
+         SetPixelFast (x1, y0, color);
+         SetPixelFast (x2, y0, color);
+         SetPixelFast (x0, y2, color);
+         SetPixelFast (x0, y1, color);
+         SetPixelFast (x1, y2, color);
+         SetPixelFast (x2, y1, color);
+      }
+   }
+
    /// <summary>Draws a horizontal line between the two given end-points (with given shade of gray)</summary>
    public void DrawHorizontalLine (int x1, int x2, int y, int gray) {
       Begin ();
