@@ -51,10 +51,8 @@ class PolyFillWin : Window {
       }
       mPF.Fill (mBmp, 255);
 
-      foreach (var line in mDwg.Lines) {
-         var ((x0, y0), (x1, y1)) = (line.A.Round (), line.B.Round ());
-         mBmp.DrawThickLine (x0, y0, x1, y1, mScale, 0, mPF);
-      }
+      foreach (var line in mDwg.Lines)
+         mBmp.DrawThickLine (line, mScale, 0, mPF);
       mBmp.End ();
    }
    PolyFillFast mPF = new ();

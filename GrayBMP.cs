@@ -127,16 +127,17 @@ class GrayBMP {
    }
 
    /// <summary> Draws a line with given pixel thickness</summary>
-   public void DrawThickLine (int x0, int y0, int x1, int y1, int width, int color, PolyFillFast mPF) {
-      var (startPt, endPt) = (new Point2(x0, y0),new Point2(x1, y1));
+   public void DrawThickLine (Line line, int width, int color, PolyFillFast pf) {
+      pf.Reset ();
       double offset = width * 0.5;
-      var vertices = Point2.GetPolygonVertices (startPt, endPt, offset);
-      mPF.Reset ();
-      for (int i = 0; i < vertices.Length - 1; i++) {
-         var ((X0, Y0),(X1, Y1)) = (vertices[i].Round (), vertices[i + 1].Round ());
-         mPF.AddLine (X0, Y0, X1, Y1);
+      var vertices = Point2.GetPolygonVertices (line.A, line.B, offset);
+      var (X0, Y0) = vertices[^1].Round ();
+      for (int i = 0, len = vertices.Length; i < len; i++) {
+         var (X1, Y1) = vertices[i].Round ();
+         pf.AddLine (X0, Y0, X1, Y1);
+         (X0, Y0) = (X1, Y1);
       }
-      mPF.Fill (this, color);
+      pf.Fill (this, color);
    }
 
    /// <summary>Call End after finishing the update of the bitmap</summary>

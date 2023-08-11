@@ -28,7 +28,7 @@ readonly record struct Point2 (double X, double Y) {
    public static Point2 Project (Point2 p, double distance, double theta) => new (p.X + (distance * Cos (theta)), p.Y + (distance * Sin (theta)));
    /// <summary> Returns vertices of polygon which encloses the given two points</summary>
    public static Point2[] GetPolygonVertices (Point2 p1, Point2 p2, double offset) {
-      var vertices = new Point2[9];
+      var vertices = new Point2[8];
       double angle = Atan2 (p2.Y - p1.Y, p2.X - p1.X), radFactor = PI / 180; // Factor to convert degree to radians
       int index = 0, proAngle = 90; // Projection Angle
       for (; proAngle <= 270; proAngle += 60) {
@@ -37,7 +37,6 @@ readonly record struct Point2 (double X, double Y) {
          vertices[index + 4] = Project (p2, -offset, tmpAngle);
          index++;
       }
-      vertices[8] = vertices[0];
       return vertices;
    }
 }
